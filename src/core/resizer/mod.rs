@@ -1,10 +1,11 @@
-use actix_web::{web, Scope};
+use actix_web::{web};
+use actix_web::dev::HttpServiceFactory;
 
 mod form;
 mod getter;
 mod processor;
 
-pub fn service(prefix: &str) -> Scope {
+pub fn service(prefix: &str) -> impl HttpServiceFactory {
   web::scope(prefix)
     .route("", web::get().to(form::form))
     .route("", web::post().to(processor::process))
