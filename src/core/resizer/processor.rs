@@ -1,12 +1,13 @@
+use std::vec::Vec;
+
 use actix_multipart::Multipart;
+use actix_web::{Error as AcError, http, HttpResponse, web};
 use actix_web::http::StatusCode;
-use actix_web::{http, web, Error as AcError, HttpResponse};
 use futures::StreamExt;
 use image;
 use image::ImageError;
 use rand;
 use rand::Rng;
-use std::vec::Vec;
 
 pub async fn process(mut payload: Multipart) -> Result<HttpResponse, AcError> {
     match payload.next().await {
@@ -14,7 +15,7 @@ pub async fn process(mut payload: Multipart) -> Result<HttpResponse, AcError> {
         Some(item) => {
             let mut field = item?;
             let content_type = field.content_disposition().unwrap();
-            
+
             // Field in turn is stream of *Bytes* object
             let mut data = Vec::new();
             while let Some(chunk) = field.next().await {

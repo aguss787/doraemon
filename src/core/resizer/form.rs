@@ -1,7 +1,7 @@
-use actix_web::{HttpResponse};
+use actix_web::HttpResponse;
 
 pub async fn form() -> HttpResponse {
-  let html = r#"<html>
+    let html = r#"<html>
       <head><title>Upload Test</title></head>
       <body>
           <form method="post" enctype="multipart/form-data">
@@ -11,5 +11,5 @@ pub async fn form() -> HttpResponse {
       </body>
   </html>"#;
 
-  HttpResponse::Ok().body(html)
+    HttpResponse::Ok().body(html)
 }
