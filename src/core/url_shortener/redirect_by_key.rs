@@ -1,29 +1,21 @@
-use actix_web::{http, HttpRequest, HttpResponse, Responder};
+use actix_web::{http, HttpRequest, HttpResponse, Result};
 use actix_web::web::Data;
-use diesel::{QueryDsl, RunQueryDsl, TextExpressionMethods};
+use diesel::result::Error as DieselError;
 
 use crate::AppData;
+use crate::database::handler::url::get_by_key;
 
-#[derive(Queryable)]
-struct Url {
-    _key: String,
-    target: String,
-}
-
-pub async fn handler(req: HttpRequest, data: Data<AppData>) -> impl Responder {
-    let name = req.match_info().get("key").unwrap();
-
-    use crate::schema::url::dsl::*;
+pub async fn handle(req: HttpRequest, data: Data<AppData>) -> Result<HttpResponse> {
+    let name = String::from(req.match_info().get("key").unwrap());
 
     let app_data = data.get_ref();
-    let url_entry_result = url
-        .filter(key.like(name))
-        .first::<Url>(&app_data.connection);
+    let url_entry_result = get_by_key(&app_data.connection, &name);
 
     match url_entry_result {
-        Err(_) => HttpResponse::NotFound().body("not found"),
-        Ok(url_entry) => HttpResponse::PermanentRedirect()
+        Err(e @ DieselError::NotFound) => Err(actix_web::error::ErrorNotFound(e)),
+        Err(e) => Err(actix_web::error::ErrorInternalServerError(e)),
+        Ok(url_entry) => Ok(HttpResponse::PermanentRedirect()
             .header(http::header::LOCATION, url_entry.target)
-            .finish(),
+            .finish()),
     }
 }

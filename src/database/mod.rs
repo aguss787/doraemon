@@ -3,6 +3,8 @@ use diesel::prelude::Connection;
 
 use crate::config::Config;
 
+pub mod handler;
+
 pub fn establish_connection(config: &Config) -> PgConnection {
     let database_config = &config.database;
     let database_url = format!(

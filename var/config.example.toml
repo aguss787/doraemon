@@ -1,5 +1,10 @@
 [database]
 host = "localhost"
-post = 5432
+port = 5432
 user = "postgres"
 password = "postgres"
+database = "doraemon"
+
+[auth]
+cypher_key = "example_key"
+token_lifetime = 3600

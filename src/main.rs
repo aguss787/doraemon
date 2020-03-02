@@ -1,16 +1,20 @@
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate magic_crypt;
 
 use std::fmt::Error;
 
 use actix_web::{App, HttpResponse, HttpServer, middleware, web};
 use diesel::PgConnection;
 
+use crate::auth::Auth;
 use crate::config::{Config, get_config};
 use crate::database::establish_connection;
 
 mod config;
 
+mod auth;
 mod core;
 
 mod database;
@@ -18,11 +22,18 @@ mod schema;
 
 pub struct AppData {
     connection: PgConnection,
+    auth: Auth,
 }
 
 fn init(config: Config) -> Result<AppData, Error> {
+    let connection = establish_connection(&config);
+
     Ok(AppData {
-        connection: establish_connection(&config),
+        connection,
+        auth: Auth {
+            cypher_key: config.auth.cypher_key,
+            token_lifetime: config.auth.token_lifetime,
+        },
     })
 }
 
@@ -38,6 +49,7 @@ async fn main() -> std::io::Result<()> {
             .service(core::greeter::service("/greet"))
             .service(core::resizer::service("/resizer"))
             .service(core::url_shortener::service("/url"))
+            .service(core::sso::service("/sso"))
             .default_service(web::to(|| HttpResponse::NotFound().body("404")))
     })
     .bind("0.0.0.0:8000")?
