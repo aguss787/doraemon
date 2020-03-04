@@ -2,7 +2,7 @@ use actix_web::{HttpResponse, Result, web};
 use actix_web::web::Data;
 use serde::{Deserialize, Serialize};
 
-use crate::AppData;
+use crate::app_data::AppData;
 use crate::auth::Token;
 
 #[derive(Deserialize, Clone)]
@@ -19,8 +19,8 @@ pub struct TokenResponse {
 pub async fn handle(item: web::Json<UserPayload>, data: Data<AppData>) -> Result<HttpResponse> {
     let token = data
         .as_ref()
-        .auth
-        .authorize(&data.connection, &item.username, &item.password)?;
+        .auth()
+        .authorize(&item.username, &item.password)?;
     Ok(HttpResponse::Ok().json(TokenResponse {
         access_token: token,
     }))

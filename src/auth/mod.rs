@@ -3,7 +3,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use base64;
 use bcrypt;
-use diesel::PgConnection;
 use diesel::result::Error as DieselError;
 use magic_crypt;
 use rand::{Rng, thread_rng};
@@ -13,7 +12,7 @@ use serde_json;
 
 use error::AuthError;
 
-use crate::database::handler::user::{get_by_username, new_user, NewUser};
+use crate::database::handler::user::{NewUser, UserHandler};
 
 mod error;
 
@@ -27,19 +26,29 @@ pub struct TokenPayload {
     pub expiry_timestamp: u128,
 }
 
-pub struct Auth {
-    pub cypher_key: String,
-    pub token_lifetime: u64,
+pub struct Auth<'a> {
+    cypher_key: &'a String,
+    token_lifetime: u64,
+    user_handler: UserHandler<'a>,
 }
 
-impl Auth {
-    pub fn authorize(
-        &self,
-        connection: &PgConnection,
-        username: &String,
-        password: &String,
-    ) -> AuthResult<Token> {
-        let potential_user = get_by_username(connection, username);
+impl<'a> Auth<'a> {
+    pub fn new(
+        cypher_key: &'a String,
+        token_lifetime: u64,
+        user_handler: UserHandler<'a>,
+    ) -> Auth<'a> {
+        Auth {
+            cypher_key,
+            token_lifetime,
+            user_handler,
+        }
+    }
+}
+
+impl<'a> Auth<'a> {
+    pub fn authorize(&self, username: &String, password: &String) -> AuthResult<Token> {
+        let potential_user = self.user_handler.get_by_username(username);
 
         match potential_user {
             Err(e) if e == DieselError::NotFound => Err(AuthError::NotFound),
@@ -54,12 +63,7 @@ impl Auth {
         }
     }
 
-    pub fn register(
-        &self,
-        connection: &PgConnection,
-        username: &String,
-        password: &String,
-    ) -> AuthResult<()> {
+    pub fn register(&self, username: &String, password: &String) -> AuthResult<()> {
         let salt = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
 
         let user = NewUser {
@@ -68,7 +72,7 @@ impl Auth {
             salt: &salt,
         };
 
-        match new_user(connection, &user) {
+        match self.user_handler.new_user(&user) {
             Ok(_) => Ok(()),
             Err(e) => {
                 if e.to_string()

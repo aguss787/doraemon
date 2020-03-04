@@ -6,35 +6,24 @@ extern crate magic_crypt;
 use std::fmt::Error;
 
 use actix_web::{App, HttpResponse, HttpServer, middleware, web};
-use diesel::PgConnection;
 
-use crate::auth::Auth;
+use crate::app_data::AppData;
 use crate::config::{Config, get_config};
 use crate::database::establish_connection;
 
 mod config;
 
+mod app_data;
 mod auth;
 mod core;
 
 mod database;
 mod schema;
 
-pub struct AppData {
-    connection: PgConnection,
-    auth: Auth,
-}
-
 fn init(config: Config) -> Result<AppData, Error> {
     let connection = establish_connection(&config);
 
-    Ok(AppData {
-        connection,
-        auth: Auth {
-            cypher_key: config.auth.cypher_key,
-            token_lifetime: config.auth.token_lifetime,
-        },
-    })
+    Ok(AppData::new(connection, &config))
 }
 
 #[actix_rt::main]

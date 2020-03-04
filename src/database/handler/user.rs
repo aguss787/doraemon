@@ -21,15 +21,27 @@ pub struct NewUser<'a> {
     pub salt: &'a String,
 }
 
-pub fn new_user(connection: &PgConnection, new_user: &NewUser) -> QueryResult<()> {
-    insert_into(user_dsl::user)
-        .values(new_user)
-        .execute(connection)?;
-    Ok(())
+pub struct UserHandler<'a> {
+    pub connection: &'a PgConnection,
 }
 
-pub fn get_by_username(connection: &PgConnection, username: &String) -> QueryResult<User> {
-    user_dsl::user
-        .filter(user_dsl::username.like(username))
-        .first::<User>(connection)
+impl<'a> UserHandler<'a> {
+    pub fn new(connection: &'a PgConnection) -> UserHandler {
+        UserHandler { connection }
+    }
+}
+
+impl<'a> UserHandler<'a> {
+    pub fn new_user(&self, new_user: &NewUser) -> QueryResult<()> {
+        insert_into(user_dsl::user)
+            .values(new_user)
+            .execute(self.connection)?;
+        Ok(())
+    }
+
+    pub fn get_by_username(&self, username: &String) -> QueryResult<User> {
+        user_dsl::user
+            .filter(user_dsl::username.like(username))
+            .first::<User>(self.connection)
+    }
 }

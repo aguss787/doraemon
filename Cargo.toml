@@ -1,6 +1,6 @@
 [package]
 name = "doraemon"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Agus Sentosa Hermawan <agus.sentosa787@gmail.com>"]
 edition = "2018"
 
