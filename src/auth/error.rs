@@ -1,6 +1,6 @@
-use std::{convert, error, fmt};
 use std::error::Error;
 use std::time::SystemTimeError;
+use std::{convert, error, fmt};
 
 use base64::DecodeError;
 use diesel::result::Error as DieselError;
@@ -12,6 +12,7 @@ pub enum AuthError {
     WrongPassword,
     InvalidToken,
     ExpiredToken,
+    InvalidRedirectUri,
     UserAlreadyExist,
     BcryptError(bcrypt::BcryptError),
     DBError(DieselError),
@@ -62,6 +63,7 @@ impl fmt::Display for AuthError {
             AuthError::WrongPassword => write!(f, "Wrong password"),
             AuthError::InvalidToken => write!(f, "Invalid token"),
             AuthError::ExpiredToken => write!(f, "Expired token"),
+            AuthError::InvalidRedirectUri => write!(f, "Invalid redirect uri"),
             AuthError::UserAlreadyExist => write!(f, "User already exist"),
             AuthError::BcryptError(e) => write!(f, "BcryptError {}", e),
             AuthError::DBError(e) => write!(f, "DBError {}", e),
@@ -77,6 +79,7 @@ impl convert::From<AuthError> for actix_web::Error {
             AuthError::NotFound => actix_web::error::ErrorNotFound(e),
             AuthError::WrongPassword => actix_web::error::ErrorBadRequest(e),
             AuthError::InvalidToken => actix_web::error::ErrorBadRequest(e),
+            AuthError::InvalidRedirectUri => actix_web::error::ErrorBadRequest(e),
             AuthError::UserAlreadyExist => actix_web::error::ErrorBadRequest(e),
             AuthError::ExpiredToken => actix_web::error::ErrorUnauthorized(e),
             _ => actix_web::error::ErrorInternalServerError(e),

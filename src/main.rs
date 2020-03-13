@@ -5,10 +5,10 @@ extern crate magic_crypt;
 
 use std::fmt::Error;
 
-use actix_web::{App, HttpResponse, HttpServer, middleware, web};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 
 use crate::app_data::AppData;
-use crate::config::{Config, get_config};
+use crate::config::{get_config, Config};
 use crate::database::establish_connection;
 
 mod config;

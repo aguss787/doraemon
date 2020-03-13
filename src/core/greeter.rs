@@ -1,5 +1,5 @@
-use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use actix_web::dev::HttpServiceFactory;
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 
 async fn greet(req: HttpRequest) -> impl Responder {
     let name = req.match_info().get("name").unwrap_or("World");

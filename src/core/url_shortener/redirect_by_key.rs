@@ -1,5 +1,5 @@
-use actix_web::{http, HttpRequest, HttpResponse, Result};
 use actix_web::web::Data;
+use actix_web::{http, HttpRequest, HttpResponse, Result};
 use diesel::result::Error as DieselError;
 
 use crate::app_data::AppData;

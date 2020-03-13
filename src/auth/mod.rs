@@ -5,56 +5,102 @@ use base64;
 use bcrypt;
 use diesel::result::Error as DieselError;
 use magic_crypt;
+use magic_crypt::MagicCrypt;
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
-use serde::{Deserialize, Serialize};
 use serde_json;
+use url::Url;
 
-use error::AuthError;
+pub use error::AuthError;
 
-use crate::database::handler::user::{NewUser, UserHandler};
+use crate::auth::error::AuthError::InvalidRedirectUri;
+use crate::auth::model::{
+    AuthCode, AuthCodePayload, AuthResult, RefreshToken, Token, TokenPayload,
+};
+use crate::database::handler::client_credential::ClientCredentialHandler;
+use crate::database::handler::user::{NewUser, User, UserHandler};
 
 mod error;
-
-pub type AuthResult<T> = Result<T, AuthError>;
-
-pub type Token = String;
-
-#[derive(Deserialize, Serialize, Clone)]
-pub struct TokenPayload {
-    pub username: String,
-    pub expiry_timestamp: u128,
-}
+pub mod model;
 
 pub struct Auth<'a> {
     cypher_key: &'a String,
     token_lifetime: u64,
+    auth_code_lifetime: u64,
     user_handler: UserHandler<'a>,
+    client_credential_handler: ClientCredentialHandler<'a>,
 }
 
 impl<'a> Auth<'a> {
     pub fn new(
         cypher_key: &'a String,
         token_lifetime: u64,
+        auth_code_lifetime: u64,
         user_handler: UserHandler<'a>,
+        client_credential_handler: ClientCredentialHandler<'a>,
     ) -> Auth<'a> {
         Auth {
             cypher_key,
             token_lifetime,
+            auth_code_lifetime,
             user_handler,
+            client_credential_handler,
         }
     }
 }
 
 impl<'a> Auth<'a> {
-    pub fn authorize(&self, username: &String, password: &String) -> AuthResult<Token> {
-        let potential_user = self.user_handler.get_by_username(username);
+    pub fn get_token(
+        &self,
+        username: &String,
+        password: &String,
+    ) -> AuthResult<(Token, RefreshToken)> {
+        let potential_user = self.get_potential_user(username, password)?;
+        let token = self.generate_token(&potential_user.username)?;
+        let refresh_token = self.generate_refresh_token(&potential_user.username)?;
 
+        Ok((token, refresh_token))
+    }
+
+    pub fn get_authorization_code(
+        &self,
+        username: &String,
+        password: &String,
+        client_id: &String,
+        redirect_uri: &String,
+    ) -> AuthResult<AuthCode> {
+        if !self.check_redirect_uri(client_id, redirect_uri)? {
+            return Err(InvalidRedirectUri);
+        }
+        let potential_user = self.get_potential_user(username, password)?;
+        self.generate_auth_code(&potential_user.username, client_id)
+    }
+
+    pub fn check_redirect_uri(
+        &self,
+        client_id: &String,
+        redirect_uri: &String,
+    ) -> AuthResult<bool> {
+        let client_credential = match self.client_credential_handler.get_by_id(client_id) {
+            Err(diesel::NotFound) => return Ok(false),
+            o => o,
+        }?;
+
+        let mut parsed_url = Url::parse(redirect_uri).map_err(|_| InvalidRedirectUri)?;
+
+        parsed_url.set_query(None);
+        let url = parsed_url.into_string();
+
+        return Ok(client_credential.redirect_uri.eq(&url));
+    }
+
+    fn get_potential_user(&self, username: &String, password: &String) -> AuthResult<User> {
+        let potential_user = self.user_handler.get_by_username(username);
         match potential_user {
             Err(e) if e == DieselError::NotFound => Err(AuthError::NotFound),
             Ok(user) => {
                 if verify(&user.password, password, &user.salt)? {
-                    self.generate_token(&user.username)
+                    Ok(user)
                 } else {
                     Err(AuthError::WrongPassword)
                 }
@@ -87,9 +133,7 @@ impl<'a> Auth<'a> {
     }
 
     pub fn inspect(&self, encrypted_token: &String) -> AuthResult<TokenPayload> {
-        let encrypted_token_bytes = base64::decode_config(encrypted_token, base64::URL_SAFE)?;
-        let mut crypter = new_magic_crypt!(self.cypher_key.clone(), 256);
-        let token_bytes = crypter.decrypt_bytes_to_bytes(&encrypted_token_bytes)?;
+        let token_bytes = self.decrypt(encrypted_token)?;
 
         let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
 
@@ -115,10 +159,49 @@ impl<'a> Auth<'a> {
 
         let token_bytes = serde_json::to_vec(&token)?;
 
-        let mut crypter = new_magic_crypt!(self.cypher_key.clone(), 256);
+        let encrypted_token = self.encrypt(&token_bytes)?;
+        Ok(encrypted_token)
+    }
+
+    fn generate_refresh_token(&self, _username: &String) -> AuthResult<RefreshToken> {
+        let refresh_token = thread_rng().sample_iter(&Alphanumeric).take(60).collect();
+
+        Ok(refresh_token)
+    }
+
+    fn generate_auth_code(&self, username: &String, client_id: &String) -> AuthResult<AuthCode> {
+        let expiry_time = SystemTime::now()
+            .add(Duration::new(self.auth_code_lifetime, 0))
+            .duration_since(UNIX_EPOCH)?
+            .as_millis();
+
+        let token = AuthCodePayload {
+            username: username.to_owned(),
+            client_id: client_id.to_owned(),
+            expiry_timestamp: expiry_time,
+        };
+
+        let token_bytes = serde_json::to_vec(&token)?;
+        let encrypted_token = self.encrypt(&token_bytes)?;
+        Ok(encrypted_token)
+    }
+
+    fn decrypt(&self, encrypted_token: &String) -> AuthResult<Vec<u8>> {
+        let encrypted_token_bytes = base64::decode_config(encrypted_token, base64::URL_SAFE)?;
+        let mut crypter = self.new_crypter();
+        let token_bytes = crypter.decrypt_bytes_to_bytes(&encrypted_token_bytes)?;
+        Ok(token_bytes)
+    }
+
+    fn encrypt(&self, token_bytes: &Vec<u8>) -> AuthResult<String> {
+        let mut crypter = self.new_crypter();
         let encrypted_token_bytes = crypter.encrypt_bytes_to_bytes(&token_bytes);
         let encrypted_token = base64::encode_config(&encrypted_token_bytes, base64::URL_SAFE);
         Ok(encrypted_token)
+    }
+
+    fn new_crypter(&self) -> MagicCrypt {
+        new_magic_crypt!(self.cypher_key.clone(), 256)
     }
 }
 

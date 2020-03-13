@@ -21,6 +21,7 @@ pub struct DatabaseConfig {
 pub struct AuthConfig {
     pub cypher_key: String,
     pub token_lifetime: u64,
+    pub auth_code_lifetime: u64,
 }
 
 pub fn get_config() -> Config {

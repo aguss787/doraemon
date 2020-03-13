@@ -2,6 +2,7 @@ use diesel::PgConnection;
 
 use crate::auth::Auth;
 use crate::config::Config;
+use crate::database::handler::client_credential::ClientCredentialHandler;
 use crate::database::handler::url::UrlHandler;
 use crate::database::handler::user::UserHandler;
 
@@ -22,7 +23,9 @@ impl AppData {
         Auth::new(
             &self.config.auth.cypher_key,
             self.config.auth.token_lifetime,
+            self.config.auth.auth_code_lifetime,
             self.user_handler(),
+            self.client_credential_handler(),
         )
     }
 
@@ -32,5 +35,9 @@ impl AppData {
 
     pub fn url_handler(&self) -> UrlHandler {
         UrlHandler::new(&self.connection)
+    }
+
+    pub fn client_credential_handler(&self) -> ClientCredentialHandler {
+        ClientCredentialHandler::new(&self.connection)
     }
 }

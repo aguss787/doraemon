@@ -1,9 +1,9 @@
-use actix_web::{HttpResponse, Result, web};
 use actix_web::web::Data;
+use actix_web::{web, HttpResponse, Result};
 use serde::Deserialize;
 
 use crate::app_data::AppData;
-use crate::auth::Token;
+use crate::auth::model::Token;
 
 #[derive(Deserialize, Clone)]
 pub struct TokenPayload {

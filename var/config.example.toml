@@ -8,3 +8,4 @@ database = "doraemon"
 [auth]
 cypher_key = "example_key"
 token_lifetime = 3600
+auth_code_lifetime = 600

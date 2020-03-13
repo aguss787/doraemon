@@ -1,8 +1,8 @@
 use std::vec::Vec;
 
 use actix_multipart::Multipart;
-use actix_web::{Error as AcError, http, HttpResponse, web};
 use actix_web::http::StatusCode;
+use actix_web::{http, web, Error as AcError, HttpResponse};
 use futures::StreamExt;
 use image;
 use image::ImageError;

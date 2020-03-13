@@ -3,7 +3,7 @@ use actix_web::web::Data;
 use serde::{Deserialize, Serialize};
 
 use crate::app_data::AppData;
-use crate::auth::Token;
+use crate::auth::model::{RefreshToken, Token};
 
 #[derive(Deserialize, Clone)]
 pub struct UserPayload {
@@ -14,14 +14,16 @@ pub struct UserPayload {
 #[derive(Serialize, Clone)]
 pub struct TokenResponse {
     access_token: Token,
+    refresh_token: RefreshToken,
 }
 
 pub async fn handle(item: web::Json<UserPayload>, data: Data<AppData>) -> Result<HttpResponse> {
-    let token = data
+    let (token, refresh_token) = data
         .as_ref()
         .auth()
-        .authorize(&item.username, &item.password)?;
+        .get_token(&item.username, &item.password)?;
     Ok(HttpResponse::Ok().json(TokenResponse {
         access_token: token,
+        refresh_token,
     }))
 }
