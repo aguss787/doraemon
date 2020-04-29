@@ -38,7 +38,7 @@ pub async fn handle_login(
 
     Ok(HttpResponse::Found()
         .header(http::header::LOCATION, redirect_uri)
-        .body("test"))
+        .finish())
 }
 
 #[derive(Deserialize)]

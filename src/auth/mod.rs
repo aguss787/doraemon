@@ -1,4 +1,5 @@
 use std::ops::Add;
+use std::panic;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use base64;
@@ -13,7 +14,7 @@ use url::Url;
 
 pub use error::AuthError;
 
-use crate::auth::error::AuthError::InvalidRedirectUri;
+use crate::auth::error::AuthError::{InvalidClientID, InvalidRedirectUri, InvalidToken};
 use crate::auth::model::{
     AuthCode, AuthCodePayload, AuthResult, RefreshToken, Token, TokenPayload,
 };
@@ -76,13 +77,43 @@ impl<'a> Auth<'a> {
         self.generate_auth_code(&potential_user.username, client_id)
     }
 
+    pub fn exchange_token(
+        &self,
+        auth_code_string: &String,
+        client_secret: &String,
+    ) -> AuthResult<(Token, RefreshToken)> {
+        let auth_code_bytes = self.decrypt(auth_code_string)?;
+
+        let auth_code: AuthCodePayload = serde_json::from_slice(&auth_code_bytes)?;
+
+        let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+
+        if auth_code.expiry_timestamp < current_time {
+            return Err(AuthError::ExpiredToken)
+        };
+
+        let client_credential = match self.client_credential_handler.get_by_id(&auth_code.client_id) {
+            Err(diesel::NotFound) => return Err(InvalidToken),
+            o => o,
+        }?;
+
+        if !client_credential.secret.eq(client_secret) {
+            return Err(InvalidClientID)
+        };
+
+        let token = self.generate_token(&auth_code.username)?;
+        let refresh_token = self.generate_refresh_token(&auth_code.username)?;
+
+        Ok((token, refresh_token))
+    }
+
     pub fn check_redirect_uri(
         &self,
         client_id: &String,
         redirect_uri: &String,
     ) -> AuthResult<bool> {
         let client_credential = match self.client_credential_handler.get_by_id(client_id) {
-            Err(diesel::NotFound) => return Ok(false),
+            Err(diesel::NotFound) => return Err(InvalidClientID),
             o => o,
         }?;
 
@@ -188,8 +219,15 @@ impl<'a> Auth<'a> {
 
     fn decrypt(&self, encrypted_token: &String) -> AuthResult<Vec<u8>> {
         let encrypted_token_bytes = base64::decode_config(encrypted_token, base64::URL_SAFE)?;
-        let mut crypter = self.new_crypter();
-        let token_bytes = crypter.decrypt_bytes_to_bytes(&encrypted_token_bytes)?;
+        let crypter = self.new_crypter();
+        let mut crypter = panic::AssertUnwindSafe(crypter);
+        let token_bytes = match panic::catch_unwind(move || crypter.decrypt_bytes_to_bytes(&encrypted_token_bytes)) {
+            Ok(r) => r?,
+            _ => {
+                println!("[WIP] Recovering from magic crypt panic, nothing to see here");
+                return Err(InvalidToken)
+            },
+        };
         Ok(token_bytes)
     }
 

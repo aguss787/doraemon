@@ -1,6 +1,6 @@
+use std::{convert, error, fmt};
 use std::error::Error;
 use std::time::SystemTimeError;
-use std::{convert, error, fmt};
 
 use base64::DecodeError;
 use diesel::result::Error as DieselError;
@@ -13,11 +13,12 @@ pub enum AuthError {
     InvalidToken,
     ExpiredToken,
     InvalidRedirectUri,
+    InvalidClientID,
     UserAlreadyExist,
     BcryptError(bcrypt::BcryptError),
     DBError(DieselError),
     JSONError(serde_json::Error),
-    InternalError(Box<dyn Error>),
+    InternalError(Option<Box<dyn Error>>),
 }
 
 impl convert::From<bcrypt::BcryptError> for AuthError {
@@ -46,7 +47,7 @@ impl convert::From<DecodeError> for AuthError {
 
 impl convert::From<SystemTimeError> for AuthError {
     fn from(e: SystemTimeError) -> AuthError {
-        AuthError::InternalError(Box::new(e))
+        AuthError::InternalError(Some(Box::new(e)))
     }
 }
 
@@ -64,11 +65,12 @@ impl fmt::Display for AuthError {
             AuthError::InvalidToken => write!(f, "Invalid token"),
             AuthError::ExpiredToken => write!(f, "Expired token"),
             AuthError::InvalidRedirectUri => write!(f, "Invalid redirect uri"),
+            AuthError::InvalidClientID => write!(f, "Invalid client id"),
             AuthError::UserAlreadyExist => write!(f, "User already exist"),
             AuthError::BcryptError(e) => write!(f, "BcryptError {}", e),
             AuthError::DBError(e) => write!(f, "DBError {}", e),
             AuthError::JSONError(e) => write!(f, "JSONError {}", e),
-            AuthError::InternalError(e) => write!(f, "InternalError {}", e),
+            AuthError::InternalError(e) => write!(f, "InternalError {:?}", e),
         }
     }
 }
@@ -80,6 +82,7 @@ impl convert::From<AuthError> for actix_web::Error {
             AuthError::WrongPassword => actix_web::error::ErrorBadRequest(e),
             AuthError::InvalidToken => actix_web::error::ErrorBadRequest(e),
             AuthError::InvalidRedirectUri => actix_web::error::ErrorBadRequest(e),
+            AuthError::InvalidClientID => actix_web::error::ErrorBadRequest(e),
             AuthError::UserAlreadyExist => actix_web::error::ErrorBadRequest(e),
             AuthError::ExpiredToken => actix_web::error::ErrorUnauthorized(e),
             _ => actix_web::error::ErrorInternalServerError(e),
