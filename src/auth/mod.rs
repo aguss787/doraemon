@@ -7,8 +7,8 @@ use bcrypt;
 use diesel::result::Error as DieselError;
 use magic_crypt;
 use magic_crypt::MagicCrypt;
-use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use serde_json;
 use url::Url;
 

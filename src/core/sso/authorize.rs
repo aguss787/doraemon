@@ -1,5 +1,5 @@
-use actix_web::{error, http, HttpResponse, Result, web};
 use actix_web::web::Data;
+use actix_web::{error, http, web, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
 use url::Url;
 

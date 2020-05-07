@@ -1,8 +1,8 @@
 use serde::Serialize;
 use tera::{Context, Tera};
 
-use crate::templater::error::{TemplaterError, TemplateResult};
 use crate::templater::error::TemplaterError::RenderError;
+use crate::templater::error::{TemplateResult, TemplaterError};
 use crate::templater::Templater;
 
 pub struct TeraTemplater {

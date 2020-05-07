@@ -1,6 +1,6 @@
-use std::{convert, error, fmt};
 use std::error::Error;
 use std::time::SystemTimeError;
+use std::{convert, error, fmt};
 
 use base64::DecodeError;
 use diesel::result::Error as DieselError;

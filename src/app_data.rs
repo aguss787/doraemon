@@ -6,8 +6,8 @@ use crate::config::Config;
 use crate::database::handler::client_credential::ClientCredentialHandler;
 use crate::database::handler::url::UrlHandler;
 use crate::database::handler::user::UserHandler;
-use crate::templater::Templater;
 use crate::templater::tera_based::TeraTemplater;
+use crate::templater::Templater;
 
 pub struct AppData {
     pub connection: PgConnection,
