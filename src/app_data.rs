@@ -1,20 +1,27 @@
 use diesel::PgConnection;
+use tera::Tera;
 
 use crate::auth::Auth;
 use crate::config::Config;
 use crate::database::handler::client_credential::ClientCredentialHandler;
 use crate::database::handler::url::UrlHandler;
 use crate::database::handler::user::UserHandler;
+use crate::templater::Templater;
+use crate::templater::tera_based::TeraTemplater;
 
 pub struct AppData {
     pub connection: PgConnection,
+    pub templater: Box<dyn Templater>,
     config: Config,
 }
 
 impl AppData {
     pub fn new(connection: PgConnection, config: &Config) -> AppData {
+        let tera = Tera::new("src/templates/**/*.html").expect("Missing template");
+
         AppData {
             connection,
+            templater: Box::new(TeraTemplater::new(tera)),
             config: config.clone(),
         }
     }

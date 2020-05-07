@@ -5,10 +5,10 @@ extern crate magic_crypt;
 
 use std::fmt::Error;
 
-use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use actix_web::{App, HttpResponse, HttpServer, middleware, web};
 
 use crate::app_data::AppData;
-use crate::config::{get_config, Config};
+use crate::config::{Config, get_config};
 use crate::database::establish_connection;
 
 mod config;
@@ -19,6 +19,8 @@ mod core;
 
 mod database;
 mod schema;
+
+mod templater;
 
 fn init(config: Config) -> Result<AppData, Error> {
     let connection = establish_connection(&config);

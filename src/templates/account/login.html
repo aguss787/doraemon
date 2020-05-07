@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock title %}
+{% block head %}
+{% endblock head %}
+{% block content %}
+<form method="post">
+    <div>
+        <label for="username"><b>Username</b></label>
+        <input type="text" name="username" id="username"/>
+    </div>
+
+    <div>
+        <label for="password"><b>Password</b></label>
+        <input type="password" name="password" id="password"/>
+    </div>
+
+    <div>
+        <input type="hidden" name="client_id" value="{{ payload.client_id }}"/>
+        <input type="hidden" name="redirect_uri" value="{{ payload.redirect_uri }}"/>
+        <input type="submit" value="Submit">
+    </div>
+</form>
+{% endblock content %}

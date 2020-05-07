@@ -41,26 +41,18 @@ pub async fn handle_login(
         .finish())
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct LoginFormParam {
     client_id: String,
     redirect_uri: String,
 }
 
-pub async fn handle_form(query: web::Query<LoginFormParam>) -> HttpResponse {
-    HttpResponse::Ok().body(format!(
-        r#"<html>
-              <head><title>Login Test</title></head>
-              <body>
-                  <form method="post">
-                      <input type="text" name="username"/>
-                      <input type="password" name="password"/>
-                      <input type="hidden" name="client_id" value="{}"/>
-                      <input type="hidden" name="redirect_uri" value="{}"/>
-                      <input type="submit" value="Submit"></button>
-                  </form>
-              </body>
-          </html>"#,
-        query.client_id, query.redirect_uri,
-    ))
+pub async fn handle_form(
+    query: web::Query<LoginFormParam>,
+    data: Data<AppData>,
+) -> Result<HttpResponse> {
+    let template = data
+        .templater
+        .login_page(&query.client_id, &query.redirect_uri)?;
+    Ok(HttpResponse::Ok().body(template))
 }

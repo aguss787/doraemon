@@ -89,16 +89,19 @@ impl<'a> Auth<'a> {
         let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
 
         if auth_code.expiry_timestamp < current_time {
-            return Err(AuthError::ExpiredToken)
+            return Err(AuthError::ExpiredToken);
         };
 
-        let client_credential = match self.client_credential_handler.get_by_id(&auth_code.client_id) {
+        let client_credential = match self
+            .client_credential_handler
+            .get_by_id(&auth_code.client_id)
+        {
             Err(diesel::NotFound) => return Err(InvalidToken),
             o => o,
         }?;
 
         if !client_credential.secret.eq(client_secret) {
-            return Err(InvalidClientID)
+            return Err(InvalidClientID);
         };
 
         let token = self.generate_token(&auth_code.username)?;
@@ -221,12 +224,14 @@ impl<'a> Auth<'a> {
         let encrypted_token_bytes = base64::decode_config(encrypted_token, base64::URL_SAFE)?;
         let crypter = self.new_crypter();
         let mut crypter = panic::AssertUnwindSafe(crypter);
-        let token_bytes = match panic::catch_unwind(move || crypter.decrypt_bytes_to_bytes(&encrypted_token_bytes)) {
+        let token_bytes = match panic::catch_unwind(move || {
+            crypter.decrypt_bytes_to_bytes(&encrypted_token_bytes)
+        }) {
             Ok(r) => r?,
             _ => {
                 println!("[WIP] Recovering from magic crypt panic, nothing to see here");
-                return Err(InvalidToken)
-            },
+                return Err(InvalidToken);
+            }
         };
         Ok(token_bytes)
     }
