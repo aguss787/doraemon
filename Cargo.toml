@@ -1,6 +1,6 @@
 [package]
 name = "doraemon"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Agus Sentosa Hermawan <agus.sentosa787@gmail.com>"]
 edition = "2018"
 
@@ -23,3 +23,4 @@ rand = "0.7.3"
 diesel = { version = "1.0.0", features = ["postgres"] }
 url = "2.1.1"
 tera = "1.2.0"
+actix-cors="0.2.0"

@@ -10,6 +10,7 @@ use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use crate::app_data::AppData;
 use crate::config::{get_config, Config};
 use crate::database::establish_connection;
+use actix_cors::Cors;
 
 mod config;
 
@@ -37,6 +38,7 @@ async fn main() -> std::io::Result<()> {
             .data(init(config.clone()).unwrap())
             .wrap(middleware::NormalizePath)
             .wrap(middleware::Logger::default())
+            .wrap(Cors::new().supports_credentials().max_age(3600).finish())
             .service(core::greeter::service("/greet"))
             .service(core::resizer::service("/resizer"))
             .service(core::url_shortener::service("/url"))
