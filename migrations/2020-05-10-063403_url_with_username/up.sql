@@ -1,0 +1,3 @@
+-- Your SQL goes here
+ALTER TABLE url
+ADD COLUMN username VARCHAR NOT NULL DEFAULT '';

@@ -10,6 +10,7 @@ table! {
     url (key) {
         key -> Varchar,
         target -> Varchar,
+        username -> Varchar,
     }
 }
 

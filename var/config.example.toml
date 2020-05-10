@@ -9,3 +9,6 @@ database = "doraemon"
 cypher_key = "example_key"
 token_lifetime = 3600
 auth_code_lifetime = 600
+
+[url]
+client_secret = "no-secret"

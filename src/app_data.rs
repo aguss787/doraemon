@@ -12,7 +12,7 @@ use crate::templater::Templater;
 pub struct AppData {
     pub connection: PgConnection,
     pub templater: Box<dyn Templater>,
-    config: Config,
+    pub config: Config,
 }
 
 impl AppData {

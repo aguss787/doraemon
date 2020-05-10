@@ -6,6 +6,7 @@ use serde::Deserialize;
 pub struct Config {
     pub database: DatabaseConfig,
     pub auth: AuthConfig,
+    pub url: UrlConfig,
 }
 
 #[derive(Deserialize, Clone)]
@@ -22,6 +23,11 @@ pub struct AuthConfig {
     pub cypher_key: String,
     pub token_lifetime: u64,
     pub auth_code_lifetime: u64,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct UrlConfig {
+    pub client_secret: String,
 }
 
 pub fn get_config() -> Config {
