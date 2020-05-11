@@ -6,7 +6,7 @@ use actix_web::HttpRequest;
 
 pub(crate) fn authenticate(
     data: &Data<AppData>,
-    req: HttpRequest,
+    req: &HttpRequest,
 ) -> actix_web::Result<TokenPayload> {
     let auth_header = req
         .headers()

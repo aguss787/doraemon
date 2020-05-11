@@ -19,4 +19,5 @@ pub fn service(prefix: &str) -> impl HttpServiceFactory {
         .route("/", web::get().to(read::handle))
         .route("/", web::delete().to(delete::handle))
         .route("/", web::patch().to(update::handle))
+        .route("/spec/{key}", web::get().to(read::handle_one))
 }

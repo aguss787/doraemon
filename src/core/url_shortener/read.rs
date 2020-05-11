@@ -24,7 +24,7 @@ pub async fn handle(
     data: Data<AppData>,
     req: HttpRequest,
 ) -> Result<HttpResponse> {
-    let token = authenticate(&data, req)?;
+    let token = authenticate(&data, &req)?;
 
     let page = request.page.unwrap_or(0);
     let per_page = request.per_page.unwrap_or(10);
@@ -42,4 +42,20 @@ pub async fn handle(
         page,
         per_page,
     }))
+}
+
+
+pub async fn handle_one(
+    data: Data<AppData>,
+    req: HttpRequest,
+) -> Result<HttpResponse> {
+    let token = authenticate(&data, &req)?;
+    let key = String::from(req.match_info().get("key").unwrap());
+
+    let url = data
+        .as_ref()
+        .url_handler()
+        .get_by_key_and_username(&key, &token.username)?;
+
+    Ok(HttpResponse::Ok().json(url))
 }

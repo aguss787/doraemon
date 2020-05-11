@@ -16,7 +16,7 @@ pub async fn handle(
     data: Data<AppData>,
     req: HttpRequest,
 ) -> Result<HttpResponse> {
-    let token = authenticate(&data, req)?;
+    let token = authenticate(&data, &req)?;
 
     data.as_ref()
         .url_handler()
