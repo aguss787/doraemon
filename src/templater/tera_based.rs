@@ -20,10 +20,12 @@ impl TeraTemplater {
         TeraTemplater { tera }
     }
 
-    fn render<T: Serialize>(&self, template: &str, payload: &T) -> TemplateResult<String> {
+    fn render<T: Serialize>(&self, template: &str, payload: Option<&T>) -> TemplateResult<String> {
         let mut context = Context::new();
 
-        context.insert("payload", payload);
+        if payload.is_some() {
+            context.insert("payload", payload.unwrap());
+        }
 
         Ok(self.tera.render(template, &context)?)
     }
@@ -37,12 +39,19 @@ impl Templater for TeraTemplater {
             redirect_uri: &'a String,
         }
 
-        self.render(
+        self.render::<Payload>(
             "account/login.html",
-            &Payload {
+            Some(&Payload {
                 client_id,
                 redirect_uri,
-            },
+            }),
+        )
+    }
+
+    fn register_page(&self) -> TemplateResult<String> {
+        self.render::<()>(
+            "account/register.html",
+            None,
         )
     }
 }

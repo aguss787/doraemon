@@ -10,9 +10,21 @@ pub struct UserPayload {
     password: String,
 }
 
-pub async fn handle(item: web::Json<UserPayload>, data: Data<AppData>) -> Result<HttpResponse> {
+pub async fn handle_register(
+    data: Data<AppData>,
+    req: web::Form<UserPayload>,
+) -> Result<HttpResponse> {
     data.as_ref()
         .auth()
-        .register(&item.username, &item.password)?;
-    Ok(HttpResponse::Ok().finish())
+        .register(&req.username, &req.password)?;
+    Ok(HttpResponse::Ok().body("Register completed! Please return to login page. No, I haven't implement redirect to login page"))
+}
+
+pub async fn handle_form(
+    data: Data<AppData>,
+) -> Result<HttpResponse> {
+    let template = data
+        .templater
+        .register_page()?;
+    Ok(HttpResponse::Ok().body(template))
 }

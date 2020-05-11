@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Login{% endblock title %}
+{% block title %}Register{% endblock title %}
 {% block head %}
 {% endblock head %}
 {% block content %}
@@ -15,13 +15,7 @@
     </div>
 
     <div>
-        <input type="hidden" name="client_id" value="{{ payload.client_id }}"/>
-        <input type="hidden" name="redirect_uri" value="{{ payload.redirect_uri }}"/>
-        <input type="submit" value="Submit">
-    </div>
-
-    <div>
-        Don't have an account? Register <a href="register">here</a>
+        <input type="submit" value="Register">
     </div>
 </form>
 {% endblock content %}
