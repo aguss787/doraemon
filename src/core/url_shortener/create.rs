@@ -3,7 +3,7 @@ use actix_web::{HttpRequest, HttpResponse, Result};
 use serde::Deserialize;
 
 use crate::app_data::AppData;
-use crate::core::url_shortener::utils::authenticate;
+use crate::core::url_shortener::utils::{authenticate, is_valid_url_key};
 
 #[derive(Deserialize)]
 pub struct CreateUrlRequest {
@@ -17,6 +17,10 @@ pub async fn handle(
     req: HttpRequest,
 ) -> Result<HttpResponse> {
     let token = authenticate(&data, &req)?;
+
+    if !is_valid_url_key(&request.key) {
+        return Ok(HttpResponse::BadRequest().body("Key can only have alphanumeric and \"_-.\""))
+    }
 
     data.as_ref()
         .url_handler()

@@ -2,6 +2,8 @@
 extern crate diesel;
 #[macro_use]
 extern crate magic_crypt;
+#[macro_use]
+extern crate lazy_static;
 
 use std::fmt::Error;
 
