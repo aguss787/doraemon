@@ -5,10 +5,7 @@ use actix_web::web::Data;
 use actix_web::HttpRequest;
 use regex::Regex;
 
-pub fn authenticate(
-    data: &Data<AppData>,
-    req: &HttpRequest,
-) -> actix_web::Result<TokenPayload> {
+pub fn authenticate(data: &Data<AppData>, req: &HttpRequest) -> actix_web::Result<TokenPayload> {
     let auth_header = req
         .headers()
         .get("Authorization")

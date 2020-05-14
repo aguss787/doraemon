@@ -8,7 +8,7 @@ pub enum SsoError {
 impl fmt::Display for SsoError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SsoError::CookieNotFound => write!(f, "Bad boi!")
+            SsoError::CookieNotFound => write!(f, "Bad boi!"),
         }
     }
 }

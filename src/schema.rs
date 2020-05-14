@@ -20,6 +20,8 @@ table! {
         username -> Varchar,
         password -> Varchar,
         salt -> Varchar,
+        email -> Varchar,
+        is_activated -> Bool,
     }
 }
 

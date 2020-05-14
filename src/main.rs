@@ -15,6 +15,7 @@ use crate::database::establish_connection;
 use actix_cors::Cors;
 
 mod config;
+mod error;
 
 mod app_data;
 mod auth;

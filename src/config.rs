@@ -7,6 +7,14 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub auth: AuthConfig,
     pub url: UrlConfig,
+    pub gmail: GmailConfig,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct GmailConfig {
+    pub smtp_host: String,
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Deserialize, Clone)]
@@ -20,9 +28,12 @@ pub struct DatabaseConfig {
 
 #[derive(Deserialize, Clone)]
 pub struct AuthConfig {
+    pub base_url: String,
+    pub email_origin: String,
     pub cypher_key: String,
     pub token_lifetime: u64,
     pub auth_code_lifetime: u64,
+    pub activation_code_lifetime: u64,
 }
 
 #[derive(Deserialize, Clone)]

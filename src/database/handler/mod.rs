@@ -16,6 +16,8 @@ pub enum DbError {
     InternalError(Option<Box<dyn Error>>),
 }
 
+impl std::error::Error for DbError {}
+
 impl From<DieselError> for DbError {
     fn from(e: DieselError) -> Self {
         match e {

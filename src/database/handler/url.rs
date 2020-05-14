@@ -51,11 +51,7 @@ impl<'a> UrlHandler<'a> {
             .load::<Url>(self.connection)?)
     }
 
-    pub fn get_by_key_and_username(
-        &self,
-        key: &String,
-        username: &String,
-    ) -> DbResult<Url> {
+    pub fn get_by_key_and_username(&self, key: &String, username: &String) -> DbResult<Url> {
         Ok(url_dsl::url
             .filter(url_dsl::key.eq(key))
             .filter(url_dsl::username.eq(username))

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Resend Activation Email{% endblock title %}
+{% block head %}
+{% endblock head %}
+{% block content %}
+<form method="post">
+    <div>
+        {{ payload.message }}
+    </div>
+    <div>
+        <label for="username"><b>Username</b></label>
+        <input type="text" name="username" id="username"/>
+    </div>
+    <div>
+        <input type="submit" value="Resend">
+    </div>
+</form>
+{% endblock content %}

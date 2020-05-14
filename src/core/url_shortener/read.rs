@@ -44,11 +44,7 @@ pub async fn handle(
     }))
 }
 
-
-pub async fn handle_one(
-    data: Data<AppData>,
-    req: HttpRequest,
-) -> Result<HttpResponse> {
+pub async fn handle_one(data: Data<AppData>, req: HttpRequest) -> Result<HttpResponse> {
     let token = authenticate(&data, &req)?;
     let key = String::from(req.match_info().get("key").unwrap());
 

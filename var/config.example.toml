@@ -9,6 +9,14 @@ database = "doraemon"
 cypher_key = "example_key"
 token_lifetime = 3600
 auth_code_lifetime = 600
+activation_code_lifetime = 3600
+base_url = "http://localhost:8000/sso"
+email_origin = "auth@agus.dev"
 
 [url]
 client_secret = "no-secret"
+
+[gmail]
+smtp_host = "smtp.gmail.com"
+username = ""
+password = ""

@@ -19,3 +19,10 @@ pub struct AuthCodePayload {
     pub client_id: String,
     pub expiry_timestamp: u128,
 }
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct ActivationCodePayload {
+    pub salt: String,
+    pub username: String,
+    pub expiry_timestamp: u128,
+}

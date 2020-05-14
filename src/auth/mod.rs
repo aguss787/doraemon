@@ -4,7 +4,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use base64;
 use bcrypt;
-use diesel::result::Error as DieselError;
 use magic_crypt;
 use magic_crypt::MagicCrypt;
 use rand::distributions::Alphanumeric;
@@ -16,7 +15,7 @@ pub use error::AuthError;
 
 use crate::auth::error::AuthError::{InvalidClientID, InvalidRedirectUri, InvalidToken};
 use crate::auth::model::{
-    AuthCode, AuthCodePayload, AuthResult, RefreshToken, Token, TokenPayload,
+    ActivationCodePayload, AuthCode, AuthCodePayload, AuthResult, RefreshToken, Token, TokenPayload,
 };
 use crate::database::handler::client_credential::ClientCredentialHandler;
 use crate::database::handler::user::{NewUser, User, UserHandler};
@@ -24,10 +23,13 @@ use crate::database::handler::user::{NewUser, User, UserHandler};
 mod error;
 pub mod model;
 
+const ACTIVATION_CODE_PREFIX: &str = "activation-code-";
+
 pub struct Auth<'a> {
     cypher_key: &'a String,
     token_lifetime: u64,
     auth_code_lifetime: u64,
+    activation_code_lifetime: u64,
     user_handler: UserHandler<'a>,
     client_credential_handler: ClientCredentialHandler<'a>,
 }
@@ -37,6 +39,7 @@ impl<'a> Auth<'a> {
         cypher_key: &'a String,
         token_lifetime: u64,
         auth_code_lifetime: u64,
+        activation_code_lifetime: u64,
         user_handler: UserHandler<'a>,
         client_credential_handler: ClientCredentialHandler<'a>,
     ) -> Auth<'a> {
@@ -44,6 +47,7 @@ impl<'a> Auth<'a> {
             cypher_key,
             token_lifetime,
             auth_code_lifetime,
+            activation_code_lifetime,
             user_handler,
             client_credential_handler,
         }
@@ -51,6 +55,38 @@ impl<'a> Auth<'a> {
 }
 
 impl<'a> Auth<'a> {
+    pub fn get_activation_code_with_email(
+        &self,
+        username: &String,
+    ) -> AuthResult<(String, String)> {
+        let user = self.user_handler.get_by_username(username)?;
+        if user.is_activated {
+            Err(AuthError::UserAlreadyActivated)
+        } else {
+            Ok((user.email, self.generate_activation_code(username)?))
+        }
+    }
+
+    pub fn activate(&self, activation_code: &String) -> AuthResult<usize> {
+        let activation_code_bytes = self.decrypt(activation_code)?;
+
+        let activation_code: ActivationCodePayload =
+            serde_json::from_slice(&activation_code_bytes)?;
+
+        if !activation_code.salt.starts_with(ACTIVATION_CODE_PREFIX) {
+            return Err(AuthError::InvalidToken);
+        }
+
+        let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+        if activation_code.expiry_timestamp < current_time {
+            return Err(AuthError::ExpiredToken);
+        };
+
+        Ok(self
+            .user_handler
+            .activate_by_username(&activation_code.username)?)
+    }
+
     pub fn get_token(
         &self,
         username: &String,
@@ -129,41 +165,29 @@ impl<'a> Auth<'a> {
     }
 
     fn get_potential_user(&self, username: &String, password: &String) -> AuthResult<User> {
-        let potential_user = self.user_handler.get_by_username(username);
-        match potential_user {
-            Err(e) if e == DieselError::NotFound => Err(AuthError::NotFound),
-            Ok(user) => {
-                if verify(&user.password, password, &user.salt)? {
-                    Ok(user)
-                } else {
-                    Err(AuthError::WrongPassword)
-                }
+        let user = self.user_handler.get_by_username(username)?;
+        if verify(&user.password, password, &user.salt)? {
+            if !user.is_activated {
+                Err(AuthError::NotActivated)
+            } else {
+                Ok(user)
             }
-            Err(e) => Err(AuthError::DBError(e)),
+        } else {
+            Err(AuthError::WrongPassword)
         }
     }
 
-    pub fn register(&self, username: &String, password: &String) -> AuthResult<()> {
-        let salt = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+    pub fn register(&self, username: &String, email: &String, password: &String) -> AuthResult<()> {
+        let salt = generate_salt();
 
         let user = NewUser {
             username,
+            email,
             password: &generate_password(password, &salt)?,
             salt: &salt,
         };
 
-        match self.user_handler.new_user(&user) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                if e.to_string()
-                    .contains("duplicate key value violates unique constraint")
-                {
-                    Err(AuthError::UserAlreadyExist)
-                } else {
-                    Err(AuthError::from(e))
-                }
-            }
-        }
+        Ok(self.user_handler.new_user(&user)?)
     }
 
     pub fn inspect(&self, encrypted_token: &String) -> AuthResult<TokenPayload> {
@@ -220,6 +244,23 @@ impl<'a> Auth<'a> {
         Ok(encrypted_token)
     }
 
+    pub fn generate_activation_code(&self, username: &String) -> AuthResult<String> {
+        let expiry_time = SystemTime::now()
+            .add(Duration::new(self.activation_code_lifetime, 0))
+            .duration_since(UNIX_EPOCH)?
+            .as_millis();
+
+        let activation_code_payload = ActivationCodePayload {
+            salt: ACTIVATION_CODE_PREFIX.to_string() + generate_salt().as_ref(),
+            username: username.to_owned(),
+            expiry_timestamp: expiry_time,
+        };
+
+        let activation_code_bytes = serde_json::to_vec(&activation_code_payload)?;
+        let activation_code = self.encrypt(&activation_code_bytes)?;
+        Ok(activation_code)
+    }
+
     fn decrypt(&self, encrypted_token: &String) -> AuthResult<Vec<u8>> {
         let encrypted_token_bytes = base64::decode_config(encrypted_token, base64::URL_SAFE)?;
         let crypter = self.new_crypter();
@@ -254,4 +295,8 @@ fn verify(key: &String, password: &String, salt: &String) -> AuthResult<bool> {
 
 fn generate_password(password: &String, salt: &String) -> AuthResult<String> {
     Ok(bcrypt::hash(password.to_owned() + salt, 12)?)
+}
+
+fn generate_salt() -> String {
+    thread_rng().sample_iter(&Alphanumeric).take(30).collect()
 }

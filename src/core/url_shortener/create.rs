@@ -19,7 +19,7 @@ pub async fn handle(
     let token = authenticate(&data, &req)?;
 
     if !is_valid_url_key(&request.key) {
-        return Ok(HttpResponse::BadRequest().body("Key can only have alphanumeric and \"_-.\""))
+        return Ok(HttpResponse::BadRequest().body("Key can only have alphanumeric and \"_-.\""));
     }
 
     data.as_ref()

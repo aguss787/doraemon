@@ -49,9 +49,18 @@ impl Templater for TeraTemplater {
     }
 
     fn register_page(&self) -> TemplateResult<String> {
-        self.render::<()>(
-            "account/register.html",
-            None,
+        self.render::<()>("account/register.html", None)
+    }
+
+    fn resend_activation_page(&self, message: &String) -> TemplateResult<String> {
+        #[derive(Serialize)]
+        struct Payload<'a> {
+            message: &'a String,
+        }
+
+        self.render::<Payload>(
+            "account/resend_activation_mail.html",
+            Some(&Payload { message }),
         )
     }
 }
