@@ -7,6 +7,8 @@ mod login;
 mod register;
 mod token;
 
+mod error;
+
 pub fn service(prefix: &str) -> impl HttpServiceFactory {
     web::scope(prefix)
         .route("/login", web::post().to(login::handle))
