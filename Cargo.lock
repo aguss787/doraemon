@@ -802,7 +802,7 @@ dependencies = [
 
 [[package]]
 name = "doraemon"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "actix-cors",
  "actix-multipart",
