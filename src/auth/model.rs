@@ -9,12 +9,14 @@ pub type AuthCode = String;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct TokenPayload {
+    pub salt: String,
     pub username: String,
     pub expiry_timestamp: u128,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct AuthCodePayload {
+    pub salt: String,
     pub username: String,
     pub client_id: String,
     pub expiry_timestamp: u128,

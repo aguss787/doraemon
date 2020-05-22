@@ -24,6 +24,8 @@ mod error;
 pub mod model;
 
 const ACTIVATION_CODE_PREFIX: &str = "activation-code-";
+const AUTH_CODE_PREFIX: &str = "authorization-code-";
+const TOKEN_PREFIX: &str = "token-";
 
 pub struct Auth<'a> {
     cypher_key: &'a String,
@@ -122,6 +124,10 @@ impl<'a> Auth<'a> {
 
         let auth_code: AuthCodePayload = serde_json::from_slice(&auth_code_bytes)?;
 
+        if !auth_code.salt.starts_with(AUTH_CODE_PREFIX) {
+            return Err(AuthError::InvalidToken);
+        }
+
         let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
 
         if auth_code.expiry_timestamp < current_time {
@@ -197,6 +203,10 @@ impl<'a> Auth<'a> {
 
         let token: TokenPayload = serde_json::from_slice(&token_bytes)?;
 
+        if !token.salt.starts_with(TOKEN_PREFIX) {
+            return Err(AuthError::InvalidToken);
+        }
+
         if token.expiry_timestamp < current_time {
             Err(AuthError::ExpiredToken)
         } else {
@@ -211,6 +221,7 @@ impl<'a> Auth<'a> {
             .as_millis();
 
         let token = TokenPayload {
+            salt: TOKEN_PREFIX.to_string() + generate_salt().as_ref(),
             username: username.to_owned(),
             expiry_timestamp: expiry_time,
         };
@@ -234,6 +245,7 @@ impl<'a> Auth<'a> {
             .as_millis();
 
         let token = AuthCodePayload {
+            salt: AUTH_CODE_PREFIX.to_string() + generate_salt().as_ref(),
             username: username.to_owned(),
             client_id: client_id.to_owned(),
             expiry_timestamp: expiry_time,
