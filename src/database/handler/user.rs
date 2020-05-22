@@ -5,7 +5,7 @@ use diesel::{
 
 use crate::database::handler::DbResult;
 use crate::schema::user as user_schema;
-use crate::schema::user::dsl as user_dsl;
+use crate::schema::user::dsl as user;
 
 #[derive(Queryable)]
 pub struct User {
@@ -38,21 +38,21 @@ impl<'a> UserHandler<'a> {
 
 impl<'a> UserHandler<'a> {
     pub fn new_user(&self, new_user: &NewUser) -> DbResult<()> {
-        insert_into(user_dsl::user)
+        insert_into(user::user)
             .values(new_user)
             .execute(self.connection)?;
         Ok(())
     }
 
     pub fn get_by_username(&self, username: &String) -> DbResult<User> {
-        Ok(user_dsl::user
-            .filter(user_dsl::username.like(username))
+        Ok(user::user
+            .filter(user::username.like(username))
             .first::<User>(self.connection)?)
     }
 
     pub fn activate_by_username(&self, username: &String) -> DbResult<usize> {
-        let result = update(user_dsl::user.filter(user_dsl::username.eq(username)))
-            .set(user_dsl::is_activated.eq(true))
+        let result = update(user::user.filter(user::username.eq(username)))
+            .set(user::is_activated.eq(true))
             .execute(self.connection)?;
 
         Ok(result)

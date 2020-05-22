@@ -17,6 +17,7 @@ pub struct GetUrlResponse {
     urls: Vec<Url>,
     page: i64,
     per_page: i64,
+    total: i64,
 }
 
 pub async fn handle(
@@ -37,10 +38,16 @@ pub async fn handle(
         .url_handler()
         .get_by_username(&token.username, offset, limit)?;
 
+    let total = data
+        .as_ref()
+        .url_handler()
+        .count_by_username(&token.username)?;
+
     Ok(HttpResponse::Ok().json(GetUrlResponse {
         urls,
         page,
         per_page,
+        total,
     }))
 }
 

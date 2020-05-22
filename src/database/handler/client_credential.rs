@@ -1,6 +1,6 @@
 use diesel::{PgConnection, QueryDsl, QueryResult, RunQueryDsl, TextExpressionMethods};
 
-use crate::schema::client_credential::dsl as client_credential_dsl;
+use crate::schema::client_credential::dsl as client_credential;
 
 #[derive(Queryable)]
 pub struct ClientCredential {
@@ -21,8 +21,8 @@ impl<'a> ClientCredentialHandler<'a> {
 
 impl<'a> ClientCredentialHandler<'a> {
     pub fn get_by_id(&self, id: &String) -> QueryResult<ClientCredential> {
-        client_credential_dsl::client_credential
-            .filter(client_credential_dsl::id.like(id))
+        client_credential::client_credential
+            .filter(client_credential::id.like(id))
             .first::<ClientCredential>(self.connection)
     }
 }

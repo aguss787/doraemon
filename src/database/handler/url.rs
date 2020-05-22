@@ -3,7 +3,7 @@ use serde::Serialize;
 
 use crate::database::handler::{DbError, DbResult};
 use crate::schema::url as url_schema;
-use crate::schema::url::dsl as url_dsl;
+use crate::schema::url::dsl as url;
 
 #[derive(Queryable, Serialize)]
 pub struct Url {
@@ -32,8 +32,8 @@ pub struct NewUser<'a> {
 
 impl<'a> UrlHandler<'a> {
     pub fn get_by_key(&self, url_key: &String) -> DbResult<Url> {
-        Ok(url_dsl::url
-            .filter(url_dsl::key.eq(url_key))
+        Ok(url::url
+            .filter(url::key.eq(url_key))
             .first::<Url>(self.connection)?)
     }
 
@@ -43,18 +43,25 @@ impl<'a> UrlHandler<'a> {
         offset: i64,
         limit: i64,
     ) -> DbResult<Vec<Url>> {
-        Ok(url_dsl::url
-            .filter(url_dsl::username.eq(username))
-            .order(url_dsl::key)
+        Ok(url::url
+            .filter(url::username.eq(username))
+            .order(url::key)
             .offset(offset)
             .limit(limit)
             .load::<Url>(self.connection)?)
     }
 
+    pub fn count_by_username(&self, username: &String) -> DbResult<i64> {
+        Ok(url::url
+            .filter(url::username.eq(username))
+            .count()
+            .first::<i64>(self.connection)?)
+    }
+
     pub fn get_by_key_and_username(&self, key: &String, username: &String) -> DbResult<Url> {
-        Ok(url_dsl::url
-            .filter(url_dsl::key.eq(key))
-            .filter(url_dsl::username.eq(username))
+        Ok(url::url
+            .filter(url::key.eq(key))
+            .filter(url::username.eq(username))
             .first::<Url>(self.connection)?)
     }
 
@@ -64,7 +71,7 @@ impl<'a> UrlHandler<'a> {
             target,
             username,
         };
-        insert_into(url_dsl::url)
+        insert_into(url::url)
             .values(new_user)
             .execute(self.connection)?;
         Ok(())
@@ -72,9 +79,9 @@ impl<'a> UrlHandler<'a> {
 
     pub fn delete(&self, key: &String, username: &String) -> DbResult<usize> {
         let count = delete(
-            url_dsl::url
-                .filter(url_dsl::key.eq(key))
-                .filter(url_dsl::username.eq(username)),
+            url::url
+                .filter(url::key.eq(key))
+                .filter(url::username.eq(username)),
         )
         .execute(self.connection)?;
         Ok(count)
@@ -97,11 +104,11 @@ impl<'a> UrlHandler<'a> {
         target: &String,
     ) -> DbResult<Url> {
         let result = update(
-            url_dsl::url
-                .filter(url_dsl::key.eq(old_key))
-                .filter(url_dsl::username.eq(username)),
+            url::url
+                .filter(url::key.eq(old_key))
+                .filter(url::username.eq(username)),
         )
-        .set((url_dsl::key.eq(new_key), url_dsl::target.eq(target)))
+        .set((url::key.eq(new_key), url::target.eq(target)))
         .get_result::<Url>(self.connection)?;
 
         Ok(result)
