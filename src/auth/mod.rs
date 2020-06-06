@@ -19,32 +19,58 @@ use crate::auth::model::{
 };
 use crate::database::handler::client_credential::ClientCredentialHandler;
 use crate::database::handler::user::{NewUser, User, UserHandler};
+use std::rc::Rc;
 
 mod error;
 pub mod model;
+
+pub trait AuthHandler {
+    fn get_activation_code_with_email(&self, username: &String) -> AuthResult<(String, String)>;
+    fn generate_activation_code(&self, username: &String) -> AuthResult<String>;
+    fn activate(&self, activation_code: &String) -> AuthResult<usize>;
+
+    fn get_token(&self, username: &String, password: &String) -> AuthResult<(Token, RefreshToken)>;
+    fn exchange_token(
+        &self,
+        auth_code_string: &String,
+        client_secret: &String,
+    ) -> AuthResult<(Token, RefreshToken)>;
+
+    fn get_authorization_code(
+        &self,
+        username: &String,
+        password: &String,
+        client_id: &String,
+        redirect_uri: &String,
+    ) -> AuthResult<AuthCode>;
+
+    fn check_redirect_uri(&self, client_id: &String, redirect_uri: &String) -> AuthResult<bool>;
+    fn register(&self, username: &String, email: &String, password: &String) -> AuthResult<()>;
+    fn inspect(&self, encrypted_token: &String) -> AuthResult<TokenPayload>;
+}
 
 const ACTIVATION_CODE_PREFIX: &str = "activation-code-";
 const AUTH_CODE_PREFIX: &str = "authorization-code-";
 const TOKEN_PREFIX: &str = "token-";
 
-pub struct Auth<'a> {
-    cypher_key: &'a String,
+pub struct Auth {
+    cypher_key: String,
     token_lifetime: u64,
     auth_code_lifetime: u64,
     activation_code_lifetime: u64,
-    user_handler: UserHandler<'a>,
-    client_credential_handler: ClientCredentialHandler<'a>,
+    user_handler: Rc<dyn UserHandler>,
+    client_credential_handler: Rc<dyn ClientCredentialHandler>,
 }
 
-impl<'a> Auth<'a> {
+impl Auth {
     pub fn new(
-        cypher_key: &'a String,
+        cypher_key: String,
         token_lifetime: u64,
         auth_code_lifetime: u64,
         activation_code_lifetime: u64,
-        user_handler: UserHandler<'a>,
-        client_credential_handler: ClientCredentialHandler<'a>,
-    ) -> Auth<'a> {
+        user_handler: Rc<dyn UserHandler>,
+        client_credential_handler: Rc<dyn ClientCredentialHandler>,
+    ) -> Auth {
         Auth {
             cypher_key,
             token_lifetime,
@@ -56,11 +82,8 @@ impl<'a> Auth<'a> {
     }
 }
 
-impl<'a> Auth<'a> {
-    pub fn get_activation_code_with_email(
-        &self,
-        username: &String,
-    ) -> AuthResult<(String, String)> {
+impl AuthHandler for Auth {
+    fn get_activation_code_with_email(&self, username: &String) -> AuthResult<(String, String)> {
         let user = self.user_handler.get_by_username(username)?;
         if user.is_activated {
             Err(AuthError::UserAlreadyActivated)
@@ -69,7 +92,24 @@ impl<'a> Auth<'a> {
         }
     }
 
-    pub fn activate(&self, activation_code: &String) -> AuthResult<usize> {
+    fn generate_activation_code(&self, username: &String) -> AuthResult<String> {
+        let expiry_time = SystemTime::now()
+            .add(Duration::new(self.activation_code_lifetime, 0))
+            .duration_since(UNIX_EPOCH)?
+            .as_millis();
+
+        let activation_code_payload = ActivationCodePayload {
+            salt: ACTIVATION_CODE_PREFIX.to_string() + generate_salt().as_ref(),
+            username: username.to_owned(),
+            expiry_timestamp: expiry_time,
+        };
+
+        let activation_code_bytes = serde_json::to_vec(&activation_code_payload)?;
+        let activation_code = self.encrypt(&activation_code_bytes)?;
+        Ok(activation_code)
+    }
+
+    fn activate(&self, activation_code: &String) -> AuthResult<usize> {
         let activation_code_bytes = self.decrypt(activation_code)?;
 
         let activation_code: ActivationCodePayload =
@@ -89,11 +129,7 @@ impl<'a> Auth<'a> {
             .activate_by_username(&activation_code.username)?)
     }
 
-    pub fn get_token(
-        &self,
-        username: &String,
-        password: &String,
-    ) -> AuthResult<(Token, RefreshToken)> {
+    fn get_token(&self, username: &String, password: &String) -> AuthResult<(Token, RefreshToken)> {
         let potential_user = self.get_potential_user(username, password)?;
         let token = self.generate_token(&potential_user.username)?;
         let refresh_token = self.generate_refresh_token(&potential_user.username)?;
@@ -101,21 +137,7 @@ impl<'a> Auth<'a> {
         Ok((token, refresh_token))
     }
 
-    pub fn get_authorization_code(
-        &self,
-        username: &String,
-        password: &String,
-        client_id: &String,
-        redirect_uri: &String,
-    ) -> AuthResult<AuthCode> {
-        if !self.check_redirect_uri(client_id, redirect_uri)? {
-            return Err(InvalidRedirectUri);
-        }
-        let potential_user = self.get_potential_user(username, password)?;
-        self.generate_auth_code(&potential_user.username, client_id)
-    }
-
-    pub fn exchange_token(
+    fn exchange_token(
         &self,
         auth_code_string: &String,
         client_secret: &String,
@@ -152,11 +174,21 @@ impl<'a> Auth<'a> {
         Ok((token, refresh_token))
     }
 
-    pub fn check_redirect_uri(
+    fn get_authorization_code(
         &self,
+        username: &String,
+        password: &String,
         client_id: &String,
         redirect_uri: &String,
-    ) -> AuthResult<bool> {
+    ) -> AuthResult<AuthCode> {
+        if !self.check_redirect_uri(client_id, redirect_uri)? {
+            return Err(InvalidRedirectUri);
+        }
+        let potential_user = self.get_potential_user(username, password)?;
+        self.generate_auth_code(&potential_user.username, client_id)
+    }
+
+    fn check_redirect_uri(&self, client_id: &String, redirect_uri: &String) -> AuthResult<bool> {
         let client_credential = match self.client_credential_handler.get_by_id(client_id) {
             Err(diesel::NotFound) => return Err(InvalidClientID),
             o => o,
@@ -170,20 +202,7 @@ impl<'a> Auth<'a> {
         return Ok(client_credential.redirect_uri.eq(&url));
     }
 
-    fn get_potential_user(&self, username: &String, password: &String) -> AuthResult<User> {
-        let user = self.user_handler.get_by_username(username)?;
-        if verify(&user.password, password, &user.salt)? {
-            if !user.is_activated {
-                Err(AuthError::NotActivated)
-            } else {
-                Ok(user)
-            }
-        } else {
-            Err(AuthError::WrongPassword)
-        }
-    }
-
-    pub fn register(&self, username: &String, email: &String, password: &String) -> AuthResult<()> {
+    fn register(&self, username: &String, email: &String, password: &String) -> AuthResult<()> {
         let salt = generate_salt();
 
         let user = NewUser {
@@ -195,8 +214,7 @@ impl<'a> Auth<'a> {
 
         Ok(self.user_handler.new_user(&user)?)
     }
-
-    pub fn inspect(&self, encrypted_token: &String) -> AuthResult<TokenPayload> {
+    fn inspect(&self, encrypted_token: &String) -> AuthResult<TokenPayload> {
         let token_bytes = self.decrypt(encrypted_token)?;
 
         let current_time = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
@@ -211,6 +229,21 @@ impl<'a> Auth<'a> {
             Err(AuthError::ExpiredToken)
         } else {
             Ok(token)
+        }
+    }
+}
+
+impl Auth {
+    fn get_potential_user(&self, username: &String, password: &String) -> AuthResult<User> {
+        let user = self.user_handler.get_by_username(username)?;
+        if verify(&user.password, password, &user.salt)? {
+            if !user.is_activated {
+                Err(AuthError::NotActivated)
+            } else {
+                Ok(user)
+            }
+        } else {
+            Err(AuthError::WrongPassword)
         }
     }
 
@@ -254,23 +287,6 @@ impl<'a> Auth<'a> {
         let token_bytes = serde_json::to_vec(&token)?;
         let encrypted_token = self.encrypt(&token_bytes)?;
         Ok(encrypted_token)
-    }
-
-    pub fn generate_activation_code(&self, username: &String) -> AuthResult<String> {
-        let expiry_time = SystemTime::now()
-            .add(Duration::new(self.activation_code_lifetime, 0))
-            .duration_since(UNIX_EPOCH)?
-            .as_millis();
-
-        let activation_code_payload = ActivationCodePayload {
-            salt: ACTIVATION_CODE_PREFIX.to_string() + generate_salt().as_ref(),
-            username: username.to_owned(),
-            expiry_timestamp: expiry_time,
-        };
-
-        let activation_code_bytes = serde_json::to_vec(&activation_code_payload)?;
-        let activation_code = self.encrypt(&activation_code_bytes)?;
-        Ok(activation_code)
     }
 
     fn decrypt(&self, encrypted_token: &String) -> AuthResult<Vec<u8>> {

@@ -19,8 +19,7 @@ pub struct TokenResponse {
 
 pub async fn handle(item: web::Json<TokenPayload>, data: Data<AppData>) -> Result<HttpResponse> {
     let (token, refresh_token) = data
-        .as_ref()
-        .auth()
+        .auth_handler
         .exchange_token(&item.auth_code, &item.client_secret)?;
 
     Ok(HttpResponse::Ok().json(TokenResponse {

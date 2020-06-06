@@ -14,7 +14,7 @@ pub fn authenticate(data: &Data<AppData>, req: &HttpRequest) -> actix_web::Resul
         .map_err(|_| AuthError::InvalidToken)?
         .to_owned();
 
-    Ok(data.as_ref().auth().inspect(&auth_header)?)
+    Ok(data.auth_handler.inspect(&auth_header)?)
 }
 
 pub fn is_valid_url_key(key: &String) -> bool {

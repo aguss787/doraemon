@@ -30,7 +30,7 @@ fn display_resend_email_form(data: Data<AppData>, message: Option<String>) -> Re
 }
 
 fn activate_user(data: Data<AppData>, activation_code: &String) -> Result<HttpResponse> {
-    data.as_ref().auth().activate(activation_code)?;
+    data.auth_handler.activate(activation_code)?;
     Ok(HttpResponse::Ok().body("Activated!"))
 }
 
@@ -44,8 +44,7 @@ pub async fn handle_resend(
     req: web::Form<ResendPayload>,
 ) -> Result<HttpResponse> {
     let request_result = data
-        .as_ref()
-        .auth()
+        .auth_handler
         .get_activation_code_with_email(&req.username);
 
     match request_result {

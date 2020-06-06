@@ -21,7 +21,7 @@ pub async fn handle_register(
 ) -> Result<HttpResponse> {
     req.cookie("csrf").ok_or(SsoError::CookieNotFound)?;
 
-    let auth = data.as_ref().auth();
+    let auth = &data.auth_handler;
 
     auth.register(&payload.username, &payload.email, &payload.password)?;
     let activation_code = auth.generate_activation_code(&payload.username)?;

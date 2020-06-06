@@ -34,14 +34,10 @@ pub async fn handle(
     let limit = per_page;
 
     let urls = data
-        .as_ref()
-        .url_handler()
+        .url_handler
         .get_by_username(&token.username, offset, limit)?;
 
-    let total = data
-        .as_ref()
-        .url_handler()
-        .count_by_username(&token.username)?;
+    let total = data.url_handler.count_by_username(&token.username)?;
 
     Ok(HttpResponse::Ok().json(GetUrlResponse {
         urls,
@@ -56,8 +52,7 @@ pub async fn handle_one(data: Data<AppData>, req: HttpRequest) -> Result<HttpRes
     let key = String::from(req.match_info().get("key").unwrap());
 
     let url = data
-        .as_ref()
-        .url_handler()
+        .url_handler
         .get_by_key_and_username(&key, &token.username)?;
 
     Ok(HttpResponse::Ok().json(url))

@@ -1,19 +1,22 @@
 use diesel::PgConnection;
 use tera::Tera;
 
-use crate::auth::Auth;
+use crate::auth::{Auth, AuthHandler};
 use crate::config::Config;
-use crate::database::handler::client_credential::ClientCredentialHandler;
-use crate::database::handler::url::UrlHandler;
-use crate::database::handler::user::UserHandler;
+use crate::database::handler::client_credential::ClientCredentialPostgresHandler;
+use crate::database::handler::url::{UrlHandler, UrlPostgresHandler};
+use crate::database::handler::user::UserPostgresHandler;
 use crate::error::Error;
 use crate::templater::tera_based::TeraTemplater;
 use crate::templater::Templater;
 use lettre::smtp::authentication::Credentials;
 use lettre::{SmtpClient, SmtpTransport};
+use std::rc::Rc;
 
 pub struct AppData {
-    pub connection: PgConnection,
+    pub connection: Rc<PgConnection>,
+    pub auth_handler: Rc<dyn AuthHandler>,
+    pub url_handler: Rc<dyn UrlHandler>,
     pub templater: Box<dyn Templater>,
     pub config: Config,
 }
@@ -21,23 +24,29 @@ pub struct AppData {
 impl AppData {
     pub fn new(connection: PgConnection, config: &Config) -> AppData {
         let tera = Tera::new("src/templates/**/*.html").expect("Missing template");
+        let connection = Rc::new(connection);
+
+        let client_credential_handler =
+            Rc::new(ClientCredentialPostgresHandler::new(connection.clone()));
+        let user_handler = Rc::new(UserPostgresHandler::new(connection.clone()));
+        let url_handler = Rc::new(UrlPostgresHandler::new(connection.clone()));
+
+        let auth_handler = Rc::new(Auth::new(
+            config.auth.cypher_key.clone(),
+            config.auth.token_lifetime,
+            config.auth.auth_code_lifetime,
+            config.auth.activation_code_lifetime,
+            user_handler.clone(),
+            client_credential_handler.clone(),
+        ));
 
         AppData {
-            connection,
+            connection: connection.clone(),
+            auth_handler,
+            url_handler,
             templater: Box::new(TeraTemplater::new(tera)),
             config: config.clone(),
         }
-    }
-
-    pub fn auth(&self) -> Auth {
-        Auth::new(
-            &self.config.auth.cypher_key,
-            self.config.auth.token_lifetime,
-            self.config.auth.auth_code_lifetime,
-            self.config.auth.activation_code_lifetime,
-            self.user_handler(),
-            self.client_credential_handler(),
-        )
     }
 
     pub fn mailer(&self) -> Result<SmtpTransport, Error> {
@@ -50,17 +59,5 @@ impl AppData {
             .map_err(|_| Error::MailError)?;
 
         Ok(client.credentials(creds).transport())
-    }
-
-    pub fn user_handler(&self) -> UserHandler {
-        UserHandler::new(&self.connection)
-    }
-
-    pub fn url_handler(&self) -> UrlHandler {
-        UrlHandler::new(&self.connection)
-    }
-
-    pub fn client_credential_handler(&self) -> ClientCredentialHandler {
-        ClientCredentialHandler::new(&self.connection)
     }
 }

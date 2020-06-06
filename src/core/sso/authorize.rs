@@ -23,7 +23,7 @@ pub async fn handle_login(
     data: Data<AppData>,
     req: web::Form<UserPayload>,
 ) -> Result<HttpResponse> {
-    let auth_code = data.as_ref().auth().get_authorization_code(
+    let auth_code = data.auth_handler.get_authorization_code(
         &req.username,
         &req.password,
         &req.client_id,

@@ -11,6 +11,6 @@ pub struct TokenPayload {
 }
 
 pub async fn handle(item: web::Json<TokenPayload>, data: Data<AppData>) -> Result<HttpResponse> {
-    let result = data.as_ref().auth().inspect(&item.access_token)?;
+    let result = data.auth_handler.inspect(&item.access_token)?;
     Ok(HttpResponse::Ok().json(result))
 }

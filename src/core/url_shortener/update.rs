@@ -29,7 +29,7 @@ pub async fn handle(
         return Ok(HttpResponse::BadRequest().body("Key can only have alphanumeric and \"_-.\""));
     }
 
-    let url = data.as_ref().url_handler().update(
+    let url = data.url_handler.update(
         &request.old_key,
         &token.username,
         &request.key,

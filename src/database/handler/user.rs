@@ -6,6 +6,13 @@ use diesel::{
 use crate::database::handler::DbResult;
 use crate::schema::user as user_schema;
 use crate::schema::user::dsl as user;
+use std::rc::Rc;
+
+pub trait UserHandler {
+    fn new_user(&self, new_user: &NewUser) -> DbResult<()>;
+    fn get_by_username(&self, username: &String) -> DbResult<User>;
+    fn activate_by_username(&self, username: &String) -> DbResult<usize>;
+}
 
 #[derive(Queryable)]
 pub struct User {
@@ -26,34 +33,34 @@ pub struct NewUser<'a> {
     pub salt: &'a String,
 }
 
-pub struct UserHandler<'a> {
-    pub connection: &'a PgConnection,
+pub struct UserPostgresHandler {
+    pub connection: Rc<PgConnection>,
 }
 
-impl<'a> UserHandler<'a> {
-    pub fn new(connection: &'a PgConnection) -> UserHandler {
-        UserHandler { connection }
+impl UserPostgresHandler {
+    pub fn new(connection: Rc<PgConnection>) -> UserPostgresHandler {
+        UserPostgresHandler { connection }
     }
 }
 
-impl<'a> UserHandler<'a> {
-    pub fn new_user(&self, new_user: &NewUser) -> DbResult<()> {
+impl UserHandler for UserPostgresHandler {
+    fn new_user(&self, new_user: &NewUser) -> DbResult<()> {
         insert_into(user::user)
             .values(new_user)
-            .execute(self.connection)?;
+            .execute(self.connection.as_ref())?;
         Ok(())
     }
 
-    pub fn get_by_username(&self, username: &String) -> DbResult<User> {
+    fn get_by_username(&self, username: &String) -> DbResult<User> {
         Ok(user::user
             .filter(user::username.like(username))
-            .first::<User>(self.connection)?)
+            .first::<User>(self.connection.as_ref())?)
     }
 
-    pub fn activate_by_username(&self, username: &String) -> DbResult<usize> {
+    fn activate_by_username(&self, username: &String) -> DbResult<usize> {
         let result = update(user::user.filter(user::username.eq(username)))
             .set(user::is_activated.eq(true))
-            .execute(self.connection)?;
+            .execute(self.connection.as_ref())?;
 
         Ok(result)
     }

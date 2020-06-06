@@ -7,19 +7,23 @@ pub async fn send_activation_mail(
     email: String,
     activation_url: String,
 ) {
-    let email = EmailBuilder::new()
+    EmailBuilder::new()
         .to(email)
         .from(origin)
         .subject("Activation code")
         .text(format!("Here is your activation code!\n{}", activation_url))
         .build()
-        .unwrap();
-
-    let result = mailer.send(email.into());
-
-    if result.is_err() {
-        println!("Could not send activation email: {:?}", result);
-    }
+        .map(Some)
+        .unwrap_or_else(|err| {
+            println!("Could not build activation email: {:?}", err);
+            None
+        })
+        .map(|email| mailer.send(email.into()))
+        .and_then(|result| result.err())
+        .and_then(|err| {
+            println!("Could not send activation email: {:?}", err);
+            Some(())
+        });
 }
 
 pub fn get_activation_url(base_url: &String, activation_code: &String) -> String {

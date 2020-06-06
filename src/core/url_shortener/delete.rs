@@ -17,8 +17,7 @@ pub async fn handle(
 ) -> Result<HttpResponse> {
     let token = authenticate(&data, &req)?;
 
-    data.as_ref()
-        .url_handler()
+    data.url_handler
         .delete_at_least_one(&request.key, &token.username)?;
 
     Ok(HttpResponse::Ok().finish())

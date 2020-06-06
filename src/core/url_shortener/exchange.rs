@@ -17,8 +17,7 @@ pub async fn handle(body: Bytes, data: Data<AppData>) -> Result<HttpResponse> {
     let client_secret = &data.as_ref().config.url.client_secret;
 
     let (token, refresh_token) = data
-        .as_ref()
-        .auth()
+        .auth_handler
         .exchange_token(&auth_code, client_secret)?;
 
     Ok(HttpResponse::Ok().json(TokenResponse {
